@@ -6,7 +6,7 @@ ROS 2 inference for [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 - Build this repository, do
 ```shell
 mkdir -p ros-ai/src && cd ros-ai/src && \
-git clone https://github.com/ros-ai/ros2_whisper.git && cd .. && \
+git clone https://github.com/gribes02/voice_command_robot.git && cd .. && \
 colcon build --symlink-install --cmake-args -DWHISPER_CUDA=On --no-warn-unused-cli
 ```
 
@@ -19,7 +19,10 @@ Run a client node (activated on space bar press):
 ```shell
 ros2 run whisper_demos whisper_on_key
 ```
-
+Ensure you have turtlebot3 downloaded to run the following command
+```shell
+ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py 
+```
 Configure `whisper` parameters in [whisper.yaml](whisper_server/config//whisper.yaml).
 
 ## Available Actions
