@@ -7,6 +7,7 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.task import Future
 from whisper_msgs.action._inference import Inference_FeedbackMessage
+from geometry_msgs.msg import Twist
 
 from whisper_msgs.action import Inference
 
@@ -27,6 +28,9 @@ class WhisperOnKey(Node):
             f"Action server {self.whisper_client._action_name} found."
         )
 
+        # publisher
+        self.publisher = self.create_publisher(Twist, "/cmd_vel", 10)
+
         self.key_listener = Listener(on_press=self.on_key)
         self.key_listener.start()
 
@@ -45,7 +49,7 @@ class WhisperOnKey(Node):
 
     def on_space(self) -> None:
         goal_msg = Inference.Goal()
-        goal_msg.max_duration = Duration(sec=20, nanosec=0)
+        goal_msg.max_duration = Duration(sec=1, nanosec=0)
         self.get_logger().info(
             f"Requesting inference for {goal_msg.max_duration.sec} seconds..."
         )
@@ -68,6 +72,43 @@ class WhisperOnKey(Node):
     def on_done(self, future: Future) -> None:
         result: Inference.Result = future.result().result
         self.get_logger().info(f"Result: {result.transcriptions}")
+        # print(f"Output: {output}")
+        output = result.transcriptions[0]
+        self.send_velocity_cmds(output)
+
+    def send_velocity_cmds(self, output) -> None:
+        """
+        Send velocity commands based on the recognized speech output.
+        """
+        # Convert output to lowercase and remove leading/trailing whitespace and punctuation
+        cleaned_output = output.lower().strip(' .!')
+
+        self.get_logger().info(f"Sending velocity commands for {cleaned_output}...")
+
+        # Initialize Twist message
+        velocity_cmd = Twist()
+
+        if cleaned_output == "stop":
+            velocity_cmd.linear.x = 0.0
+            velocity_cmd.angular.z = 0.0
+        elif cleaned_output == "forward":
+            velocity_cmd.linear.x = 0.25
+            velocity_cmd.angular.z = 0.0
+        elif cleaned_output == "backward":
+            velocity_cmd.linear.x = -0.25
+            velocity_cmd.angular.z = 0.0
+        elif cleaned_output == "left":
+            velocity_cmd.linear.x = 0.0
+            velocity_cmd.angular.z = 0.25
+        elif cleaned_output == "right":
+            velocity_cmd.linear.x = 0.0
+            velocity_cmd.angular.z = -0.25
+        else:
+            self.get_logger().warn(f"Unknown command: {output}")
+            return
+
+        # Publish the Twist message
+        self.publisher.publish(velocity_cmd)
 
     def on_feedback(self, feedback_msg: Inference_FeedbackMessage) -> None:
         if self.batch_idx != feedback_msg.feedback.batch_idx:
